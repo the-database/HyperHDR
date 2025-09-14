@@ -377,25 +377,81 @@ ColorRgb ImageColorAveraging::calcMeanAdvColor(const Image<ColorRgb>& image, con
 	}
 }
 
-ColorRgb ImageColorAveraging::calcMeanColor(const Image<ColorRgb>& image) const
+ColorRgb ImageColorAveraging::calcMeanColor(const Image<ColorRgb>& image,
+                                            const std::vector<int32_t>& colors) const
 {
-	uint_fast32_t sumRed = 0;
-	uint_fast32_t sumGreen = 0;
-	uint_fast32_t sumBlue = 0;
-	const size_t imageSize = image.size();
+    const size_t n = colors.size();
+    if (n == 0) return ColorRgb::BLACK;
 
-	const uint8_t* imgData = image.rawMem();
+    // Tunables (same behavior as before):
+    const double SAT_GAMMA = 1.6; // >1 boosts saturated pixels more
+    const double VAL_GAMMA = 1.0; // 0 ignores brightness, 1 weights by brightness
+    const double MIX_GAMMA = 0.8; // lower -> switch to saturated blend sooner
 
-	for (size_t idx = 0; idx < imageSize; idx += 3)
-	{
-		sumRed += imgData[idx];
-		sumGreen += imgData[idx + 1];
-		sumBlue += imgData[idx + 2];
-	}
+    const uint8_t* img = image.rawMem();
 
-	const uint8_t avgRed = uint8_t(sumRed / (imageSize / 3));
-	const uint8_t avgGreen = uint8_t(sumGreen / (imageSize / 3));
-	const uint8_t avgBlue = uint8_t(sumBlue / (imageSize / 3));
+    // Unweighted sums (for natural fallback/blend)
+    unsigned long long sumR = 0, sumG = 0, sumB = 0;
 
-	return { avgRed, avgGreen, avgBlue };
+    // Weighted by chroma*value^gammas
+    double wSum = 0.0, wR = 0.0, wG = 0.0, wB = 0.0;
+
+    // For overall saturation estimate
+    unsigned long long chromaSum = 0;
+
+    for (unsigned off : colors) {
+        unsigned r = img[off];
+        unsigned g = img[off + 1];
+        unsigned b = img[off + 2];
+
+        sumR += r; sumG += g; sumB += b;
+
+        unsigned maxc = std::max(r, std::max(g, b));
+        unsigned minc = std::min(r, std::min(g, b));
+        unsigned chroma = maxc - minc;          // 0..255 saturation proxy
+
+        chromaSum += chroma;
+
+        if (chroma == 0 && maxc == 0) continue; // ignore pure black/gray
+
+        const double vs = maxc / 255.0;         // brightness/value 0..1
+        const double cs = chroma / 255.0;       // saturation proxy 0..1
+        const double w  = (::pow(cs, SAT_GAMMA)) * (::pow(vs, VAL_GAMMA));
+
+        wSum += w;
+        wR += w * r;
+        wG += w * g;
+        wB += w * b;
+    }
+
+    // Plain average (keeps low-sat scenes looking natural)
+    const double avgR = static_cast<double>(sumR) / (double)n;
+    const double avgG = static_cast<double>(sumG) / (double)n;
+    const double avgB = static_cast<double>(sumB) / (double)n;
+
+    if (wSum <= 1e-12) {
+        return { (uint8_t)(avgR + 0.5), (uint8_t)(avgG + 0.5), (uint8_t)(avgB + 0.5) };
+    }
+
+    // Saturation-weighted average
+    const double satR = wR / wSum;
+    const double satG = wG / wSum;
+    const double satB = wB / wSum;
+
+    // How colorful the region is overall (0..1), controls blend factor
+    const double meanSat = (double)chromaSum / (255.0 * (double)n);
+    const double t = ::pow(meanSat, MIX_GAMMA); // 0 => avg, 1 => saturated blend
+
+    auto lerpClamp8 = [](double a, double b, double tt) -> uint8_t {
+        double x = a + (b - a) * tt;      // blend
+        int v = (int)(x + 0.5);           // round (values are non-negative)
+        if (v < 0) v = 0; else if (v > 255) v = 255;
+        return (uint8_t)v;
+    };
+
+    return {
+        lerpClamp8(avgR, satR, t),
+        lerpClamp8(avgG, satG, t),
+        lerpClamp8(avgB, satB, t)
+    };
 }
