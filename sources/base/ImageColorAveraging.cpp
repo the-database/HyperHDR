@@ -453,5 +453,6 @@ ColorRgb ImageColorAveraging::calcMeanColor(const Image<ColorRgb>& image,
         lerpClamp8(avgR, satR, t),
         lerpClamp8(avgG, satG, t),
         lerpClamp8(avgB, satB, t)
-    };
+    };   
 }
+      
