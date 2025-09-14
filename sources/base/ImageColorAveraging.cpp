@@ -293,90 +293,6 @@ void ImageColorAveraging::getMeanAdvLedColor(std::vector<ColorRgb>& ledColors, c
 	}
 }
 
-ColorRgb ImageColorAveraging::calcMeanColor(const Image<ColorRgb>& image, const std::vector<int32_t>& colors) const
-{
-	const auto colorVecSize = colors.size();
-
-	if (colorVecSize == 0)
-	{
-		return ColorRgb::BLACK;
-	}
-
-	uint_fast32_t sumRed = 0;
-	uint_fast32_t sumGreen = 0;
-	uint_fast32_t sumBlue = 0;
-	const uint8_t* imgData = image.rawMem();
-
-	for (const unsigned colorOffset : colors)
-	{
-		sumRed += imgData[colorOffset];
-		sumGreen += imgData[colorOffset + 1];
-		sumBlue += imgData[colorOffset + 2];
-	}
-
-	const uint8_t avgRed = uint8_t(sumRed / colorVecSize);
-	const uint8_t avgGreen = uint8_t(sumGreen / colorVecSize);
-	const uint8_t avgBlue = uint8_t(sumBlue / colorVecSize);
-
-	return { avgRed, avgGreen, avgBlue };
-}
-
-ColorRgb ImageColorAveraging::calcMeanAdvColor(const Image<ColorRgb>& image, const std::vector<int32_t>& colors, uint16_t* lut) const
-{
-	const auto colorVecSize = colors.size();
-
-	if (colorVecSize == 0)
-	{
-		return ColorRgb::BLACK;
-	}
-
-	uint_fast64_t sum1 = 0;
-	uint_fast64_t sumRed1 = 0;
-	uint_fast64_t sumGreen1 = 0;
-	uint_fast64_t sumBlue1 = 0;
-
-	uint_fast64_t sum2 = 0;
-	uint_fast64_t sumRed2 = 0;
-	uint_fast64_t sumGreen2 = 0;
-	uint_fast64_t sumBlue2 = 0;
-
-	const uint8_t* imgData = image.rawMem();
-
-	for (const int32_t colorOffset : colors)
-	{
-		if (colorOffset >= 0) {
-			sumRed1 += lut[imgData[colorOffset]];
-			sumGreen1 += lut[imgData[colorOffset + 1]];
-			sumBlue1 += lut[imgData[colorOffset + 2]];
-			sum1++;
-		}
-		else {
-			sumRed2 += lut[imgData[(-colorOffset)]];
-			sumGreen2 += lut[imgData[(-colorOffset) + 1]];
-			sumBlue2 += lut[imgData[(-colorOffset) + 2]];
-			sum2++;
-		}
-	}
-
-
-	if (sum1 > 0 && sum2 > 0)
-	{
-		uint16_t avgRed = std::min((uint32_t)sqrt(((sumRed1 * 3) / sum1 + sumRed2 / sum2) / 4), (uint32_t)255);
-		uint16_t avgGreen = std::min((uint32_t)sqrt(((sumGreen1 * 3) / sum1 + sumGreen2 / sum2) / 4), (uint32_t)255);
-		uint16_t avgBlue = std::min((uint32_t)sqrt(((sumBlue1 * 3) / sum1 + sumBlue2 / sum2) / 4), (uint32_t)255);
-
-		return { (uint8_t)avgRed, (uint8_t)avgGreen, (uint8_t)avgBlue };
-	}
-	else
-	{
-		uint16_t avgRed = std::min((uint32_t)sqrt((sumRed1 + sumRed2) / (sum1 + sum2)), (uint32_t)255);
-		uint16_t avgGreen = std::min((uint32_t)sqrt((sumGreen1 + sumGreen2) / (sum1 + sum2)), (uint32_t)255);
-		uint16_t avgBlue = std::min((uint32_t)sqrt((sumBlue1 + sumBlue2) / (sum1 + sum2)), (uint32_t)255);
-
-		return { (uint8_t)avgRed, (uint8_t)avgGreen, (uint8_t)avgBlue };
-	}
-}
-
 ColorRgb ImageColorAveraging::calcMeanColor(const Image<ColorRgb>& image,
                                             const std::vector<int32_t>& colors) const
 {
@@ -455,4 +371,141 @@ ColorRgb ImageColorAveraging::calcMeanColor(const Image<ColorRgb>& image,
         lerpClamp8(avgB, satB, t)
     };   
 }
+
+ColorRgb ImageColorAveraging::calcMeanAdvColor(const Image<ColorRgb>& image, const std::vector<int32_t>& colors, uint16_t* lut) const
+{
+	const auto colorVecSize = colors.size();
+
+	if (colorVecSize == 0)
+	{
+		return ColorRgb::BLACK;
+	}
+
+	uint_fast64_t sum1 = 0;
+	uint_fast64_t sumRed1 = 0;
+	uint_fast64_t sumGreen1 = 0;
+	uint_fast64_t sumBlue1 = 0;
+
+	uint_fast64_t sum2 = 0;
+	uint_fast64_t sumRed2 = 0;
+	uint_fast64_t sumGreen2 = 0;
+	uint_fast64_t sumBlue2 = 0;
+
+	const uint8_t* imgData = image.rawMem();
+
+	for (const int32_t colorOffset : colors)
+	{
+		if (colorOffset >= 0) {
+			sumRed1 += lut[imgData[colorOffset]];
+			sumGreen1 += lut[imgData[colorOffset + 1]];
+			sumBlue1 += lut[imgData[colorOffset + 2]];
+			sum1++;
+		}
+		else {
+			sumRed2 += lut[imgData[(-colorOffset)]];
+			sumGreen2 += lut[imgData[(-colorOffset) + 1]];
+			sumBlue2 += lut[imgData[(-colorOffset) + 2]];
+			sum2++;
+		}
+	}
+
+
+	if (sum1 > 0 && sum2 > 0)
+	{
+		uint16_t avgRed = std::min((uint32_t)sqrt(((sumRed1 * 3) / sum1 + sumRed2 / sum2) / 4), (uint32_t)255);
+		uint16_t avgGreen = std::min((uint32_t)sqrt(((sumGreen1 * 3) / sum1 + sumGreen2 / sum2) / 4), (uint32_t)255);
+		uint16_t avgBlue = std::min((uint32_t)sqrt(((sumBlue1 * 3) / sum1 + sumBlue2 / sum2) / 4), (uint32_t)255);
+
+		return { (uint8_t)avgRed, (uint8_t)avgGreen, (uint8_t)avgBlue };
+	}
+	else
+	{
+		uint16_t avgRed = std::min((uint32_t)sqrt((sumRed1 + sumRed2) / (sum1 + sum2)), (uint32_t)255);
+		uint16_t avgGreen = std::min((uint32_t)sqrt((sumGreen1 + sumGreen2) / (sum1 + sum2)), (uint32_t)255);
+		uint16_t avgBlue = std::min((uint32_t)sqrt((sumBlue1 + sumBlue2) / (sum1 + sum2)), (uint32_t)255);
+
+		return { (uint8_t)avgRed, (uint8_t)avgGreen, (uint8_t)avgBlue };
+	}
+}
+
+ColorRgb ImageColorAveraging::calcMeanColor(const Image<ColorRgb>& image) const
+{
+    const size_t imageSize = image.size();      // bytes
+    const size_t n = imageSize / 3;             // pixels
+    if (n == 0) return ColorRgb::BLACK;
+
+    // Tunables (same as previous function)
+    const double SAT_GAMMA = 1.6;  // >1 boosts saturated pixels more
+    const double VAL_GAMMA = 1.0;  // 0 ignores brightness, 1 weights by brightness
+    const double MIX_GAMMA = 0.8;  // lower -> switch to saturated blend sooner
+
+    const uint8_t* img = image.rawMem();
+
+    // Unweighted sums (fallback / blend base)
+    unsigned long long sumR = 0, sumG = 0, sumB = 0;
+
+    // Saturation-weighted sums
+    double wSum = 0.0, wR = 0.0, wG = 0.0, wB = 0.0;
+
+    // For overall saturation estimate
+    unsigned long long chromaSum = 0;
+
+    for (size_t idx = 0; idx < imageSize; idx += 3)
+    {
+        unsigned r = img[idx];
+        unsigned g = img[idx + 1];
+        unsigned b = img[idx + 2];
+
+        sumR += r; sumG += g; sumB += b;
+
+        unsigned maxc = std::max(r, std::max(g, b));
+        unsigned minc = std::min(r, std::min(g, b));
+        unsigned chroma = maxc - minc;  // 0..255
+
+        chromaSum += chroma;
+
+        if (chroma == 0 && maxc == 0) continue; // ignore pure black
+
+        const double vs = maxc / 255.0; // brightness 0..1
+        const double cs = chroma / 255.0; // saturation proxy 0..1
+        const double w  = (::pow(cs, SAT_GAMMA)) * (::pow(vs, VAL_GAMMA));
+
+        wSum += w;
+        wR += w * r;
+        wG += w * g;
+        wB += w * b;
+    }
+
+    // Plain average (keeps low-sat scenes looking natural)
+    const double avgR = static_cast<double>(sumR) / static_cast<double>(n);
+    const double avgG = static_cast<double>(sumG) / static_cast<double>(n);
+    const double avgB = static_cast<double>(sumB) / static_cast<double>(n);
+
+    if (wSum <= 1e-12) {
+        return { (uint8_t)(avgR + 0.5), (uint8_t)(avgG + 0.5), (uint8_t)(avgB + 0.5) };
+    }
+
+    // Saturation-weighted average
+    const double satR = wR / wSum;
+    const double satG = wG / wSum;
+    const double satB = wB / wSum;
+
+    // Blend toward saturated result based on overall saturation of the region
+    const double meanSat = (double)chromaSum / (255.0 * (double)n);   // 0..1
+    const double t = ::pow(meanSat, MIX_GAMMA);                       // 0 → avg, 1 → sat
+
+    auto lerpClamp8 = [](double a, double b, double tt) -> uint8_t {
+        double x = a + (b - a) * tt;  // blend
+        int v = (int)(x + 0.5);       // round
+        if (v < 0) v = 0; else if (v > 255) v = 255;
+        return (uint8_t)v;
+    };
+
+    return {
+        lerpClamp8(avgR, satR, t),
+        lerpClamp8(avgG, satG, t),
+        lerpClamp8(avgB, satB, t)
+    };
+}
+
       
