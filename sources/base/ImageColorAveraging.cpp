@@ -300,9 +300,9 @@ ColorRgb ImageColorAveraging::calcMeanColor(const Image<ColorRgb>& image,
     if (n == 0) return ColorRgb::BLACK;
 
     // Tunables (same behavior as before):
-    const double SAT_GAMMA = 1.6; // >1 boosts saturated pixels more
+    const double SAT_GAMMA = 2.0; // >1 boosts saturated pixels more
     const double VAL_GAMMA = 1.0; // 0 ignores brightness, 1 weights by brightness
-    const double MIX_GAMMA = 0.8; // lower -> switch to saturated blend sooner
+    const double MIX_GAMMA = 0.5; // lower -> switch to saturated blend sooner
 
     const uint8_t* img = image.rawMem();
 
@@ -435,9 +435,9 @@ ColorRgb ImageColorAveraging::calcMeanColor(const Image<ColorRgb>& image) const
     if (n == 0) return ColorRgb::BLACK;
 
     // Tunables (same as previous function)
-    const double SAT_GAMMA = 1.6;  // >1 boosts saturated pixels more
+    const double SAT_GAMMA = 2.0;  // >1 boosts saturated pixels more
     const double VAL_GAMMA = 1.0;  // 0 ignores brightness, 1 weights by brightness
-    const double MIX_GAMMA = 0.8;  // lower -> switch to saturated blend sooner
+    const double MIX_GAMMA = 0.5;  // lower -> switch to saturated blend sooner
 
     const uint8_t* img = image.rawMem();
 
